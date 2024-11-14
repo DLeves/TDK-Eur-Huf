@@ -77,7 +77,9 @@ plot_df = data.frame(y = y_log, y_hat = y_log_hat$sim_15, t = 1:162)
 
 ggplot(plot_df, aes(x = t))+
   geom_line(aes(y = y), color = "blue", size = 1)+
-  geom_line(aes(y = y_hat), color = "red", size = 1)
+  geom_line(aes(y = y_hat), color = "red", size = 1)+
+  labs(title = "A 23. LSTM modell becslése a loghozamra és az aktuális adatok")+
+  theme_bw()
 
 
 # TIC = sqrt(sum (y-y_hat)^2) / (sqrt(sum y_hat^2) + sqrt(sum y^2))
