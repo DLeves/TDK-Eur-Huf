@@ -8,182 +8,123 @@ output:
     toc_float:true
 ---
 
+# Libraries and the header file
+
 ```{r setup, message=FALSE}
+# data transform, etc
 library(tidyverse)
+
+# scraping
 library(rvest)
+library(httr)
+
+# translating
+library(deeplr)
+
+# financial data
 library(quantmod)
-library(openxlsx)
 ```
 
-# Magyar Hang // hang.hu
+```{r}
+# functions
+source("webscrape_full_text.R")
+```
 
-```{r reader function}
-mh_reader = function(link, max_page, id){
+# Links for the scraping
+
+```{r}
+varga_link = "https://hang.hu/kereses/cimke/varga-mihaly-660"
+
+kinfo_link = "https://hang.hu/kereses/cimke/kormanyinfo-1462"
+nagy_link = "https://hang.hu/kereses/cimke/nagy-marton-27845"
+matolcsy_link = "https://hang.hu/kereses/cimke/matolcsy-gyorgy-631"
+```
+
+# Scraping
+
+```{r echo=FALSE}
+# OK
+varga = scrape_magyar_hang(varga_link)
+varga$name = "varga"
+
+# OK - de sok a belfoldes kinfo cikk
+kinfo = scrape_magyar_hang(kinfo_link)
+kinfo$name = "kinfo"
+
+# OK
+nagy = scrape_magyar_hang(nagy_link)
+nagy$name = "nagy"
+
+# OK
+matolcsy = scrape_magyar_hang(matolcsy_link)
+matolcsy$name = "matolcsy"
+```
+
+# Aggregating data
+
+```{r}
+full_dataset = rbind(
+  varga,
+  nagy,
+  matolcsy,
+  kinfo
+)
+```
+
+# Translating to English
+
+We are using Deepl API Pro
+```{r}
+api_key = readLines("deepl_api_key.txt")
+
+# making an empty col for the translated text
+full_dataset$text_eng = NA
+
+# iterating trough the dataset and translating the articles
+for (i in 1:nrow(full_dataset)) {
   
-  ##################################################################################################
-  # reading the link
-  ##################################################################################################
+  # translating
+  text_eng = translate(text = full_dataset$text[i],
+                        source_lang = "HU",
+                        target_lang = "EN",
+                        auth_key = api_key)
   
-  #iterating trough the pages and collecting the data
-  for(i in seq(1,max_page,by=1)){
-    
-    # reading the html
-    page = read_html(paste0(link, i))
-    
-    # extracting the title
-    title = page %>% html_nodes(".post-list .entry-title a") %>% html_text()
-    
-    # extracting the date
-    date = page %>% html_nodes(".post-list li:nth-child(2)") %>% html_text()
-    
-    # making a dataframe from the title and date
-    page_df = data.frame(title, date)
-    
-    # concanating the newly read dataframe to past dataframes
-    if(i == 1){
-      df = page_df
-    }
-    else{
-      df = rbind(df, page_df)
-    }
-  }
+  # saving the translation to the df
+  full_dataset$text_eng[i] = text_eng
   
-  ##################################################################################################
-  # transforming the data
-  ##################################################################################################
-  
-  hungarian_months <- c("január" = "01.", "február" = "02.", "március" = "03.",
-                      "április" = "04.", "május" = "05.", "június" = "06.",
-                      "július" = "07.", "augusztus" = "08.", "szeptember" = "09.",
-                      "október" = "10.", "november" = "11.", "december" = "12.")
-  
-  df$date = str_replace_all(df$date, hungarian_months)
-  df$date = as.Date(df$date, format = "%Y. %m. %d.")
-  
-  
-  return(df)
-  
-  
+  # Sys.sleep(5)
 }
 ```
 
-
-## Kormanyinfo
-
-```{r magyar hang kinfo}
-link = "https://hang.hu/kereses/cimke/kormanyinfo-1462?page="
-max_page = 20
-id = "Kormanyinfo"
-mh_kinfo = mh_reader(link, max_page, id)
-
-head(mh_kinfo)
-```
-
-
-## Varga Mihaly
-
-```{r magyar hang vargamihaly}
-link = "https://hang.hu/kereses/cimke/varga-mihaly-660?page="
-max_page = 14
-id = "VargaMihaly"
-mh_vm = mh_reader(link, max_page)
-
-head(mh_vm)
-```
-
-
-## Nagy Marton
-
-```{r magyar hang nagymarton}
-link = "https://hang.hu/kereses/cimke/nagy-marton-27845?page="
-max_page = 10
-id = "NagyMarton"
-mh_nm = mh_reader(link, max_page, id)
-
-head(mh_nm)
-```
-
-
-## Matolcsy Gyorgy
-
-```{r hang matolcsy, message=FALSE, error=FALSE}
-link = "https://hang.hu/kereses/cimke/matolcsy-gyorgy-631?page="
-max_page = 13
-id = "MatolcsyGyorgy"
-mh_mgy = mh_reader(link, max_page, id)
-
-head(mh_mgy)
-```
-
-## Aggregating the data
+# Making the full dataset
 
 ```{r}
-mh_nm$date[mh_nm$title == "Nehézsúlyú üzletemberek, fekete öves hadakozók"] = as.Date("2022-12-05")
-mh_mgy$date[mh_mgy$title == "Nehézsúlyú üzletemberek, fekete öves hadakozók"] = as.Date("2022-12-05")
-```
+ir = read.csv("alapkamatok.csv")
 
+eur = getSymbols("EURHUF=X", from = "2018-06-01", to="2025-02-14", auto.assign = F) %>%
+  as.data.frame() %>% 
+  rename(eur_close = `EURHUF=X.Close`) %>% 
+  mutate(Date = row.names(.)) %>% 
+  select(Date, eur_close) %>% 
+  left_join(ir, by = "Date") %>%
+  fill(Fed, MNB, ECB, .direction = "downup") %>% 
+  select(-X)
 
-```{r}
-eurhuf = as.data.frame(getSymbols("EURHUF=X", auto.assign = FALSE, from = "2018-06-01"))
-usdhuf = as.data.frame(getSymbols("USDHUF=X", auto.assign = FALSE, from = "2018-06-01"))
+articles = read.csv("D://TDK-Eur-Huf/Sentiment analysis/articles_tranlated_w_sentiment.csv")
 
-kinfo_dummy = as.integer(row.names(eurhuf) %in% mh_kinfo$date)
-vm_dummy = as.integer(row.names(eurhuf) %in% mh_vm$date)
-nm_dummy = as.integer(row.names(eurhuf) %in% mh_nm$date)
-mgy_dummy = as.integer(row.names(eurhuf) %in% mh_mgy$date)
+articles_wide = articles %>% 
+  select(date, name, title,  prediction) %>% 
+  group_by(date, name) %>% 
+  summarise(mean = mean(prediction),
+            max = max(prediction)) %>% 
+  pivot_wider(values_from = c("mean", "max")) %>% 
+  rename(Date = date)
 
-df = cbind(row.names(eurhuf),eurhuf, usdhuf, kinfo_dummy, vm_dummy, nm_dummy, mgy_dummy)
+df = eur %>% 
+  left_join(articles_wide, by = "Date") %>%
+  na.fill(0) %>% 
+  as.data.frame()
 
-write.xlsx(list("Base df" = df, "Kormanyinfo" = mh_kinfo, "Varga Mihaly" = mh_vm, "Nagy Marton" = mh_nm, "Matolcsy Gyorgy" = mh_mgy), "TDK_data.xlsx")
-```
-
-
-# Portfolio // portfolio.hu
-
-## Kormanyinfo
-
-```{r hang kinfo}
-
-```
-
-
-## Varga Mihaly
-
-```{r hang vargamihaly}
-
-```
-
-
-## Nagy Marton
-
-```{r, eval=FALSE, include=FALSE}
-link = "https://www.portfolio.hu/cimke/nagy%20marton?page="
-
-for(i in seq(1,24,by=1)){
-  
-  print(paste("page", i))
-  
-  page = read_html(paste0(link, i))
-  
-  title = page %>% html_nodes(".d-flex h3 a") %>% html_text()
-  
-  #subtitle = page %>% html_nodes(".d-flex p") %>% html_text()
-  
-  date = page %>% html_nodes(".bigger-image time") %>% html_text()
-  
-  # page_df = data.frame(title, subtitle, date)
-  page_df = data.frame(title, date)
-  
-  if(i == 1){
-    df_p_nm = page_df
-  }
-  else{
-    df_p_nm = rbind(df_p_nm, page_df)
-  }
-  
-  Sys.sleep(10)
-}
-
-head(df_p_nm)
+write.csv(df, "full_dataset.csv")
 ```
 
