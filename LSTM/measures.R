@@ -15,7 +15,7 @@ calc_tic = function(y, y_hat){
 calc_measures = function(sheet){
   
   # y and y_log
-  y = read_csv("./LSTM/full_dataset.csv")
+  y = read_csv("./LSTM/full_dataset_20250830.csv")
   y = y %>%
     filter(Date >= as.Date("2024-06-13")) %>% 
     rename(y = `eur_close`) %>% 
@@ -25,7 +25,7 @@ calc_measures = function(sheet){
   
   # error = read_excel("./LSTM/errors_results.xlsx", sheet = 'no_dummies')[-1]
   # error = read_excel("./LSTM/errors_results.xlsx", sheet = 'only_vm')[-1]
-  error = read_excel("./LSTM/errors_results.xlsx", sheet = sheet, .name_repair = "minimal")#[-1]
+  error = read_excel("./LSTM/errors_results.xlsx", sheet = sheet, .name_repair = "minimal")[-1]
   y_hat = sapply(error, function(x) y-x)
   y_hat = as.data.frame(y_hat)  
   
@@ -42,7 +42,7 @@ calc_measures = function(sheet){
   rmse = c()
   mae = c()
   
-  for (i in 1:500) {
+  for (i in 1:ncol(y_log_hat)) {
     tic[i] = calc_tic(y_log, y_log_hat[,i])
     rmse[i] = sqrt(mean((y_log-y_log_hat[,i])^2))
     mae[i] = mean(abs(y_log-y_log_hat[,i]))
@@ -51,6 +51,15 @@ calc_measures = function(sheet){
   return(data.frame(mae = mae, rmse = rmse, tic= tic))
 }
 
+
+measures = data.frame()
+sheets = c('no_dummies', 'only_kinfo', 'only_vm', 'only_nm', 'only_mgy', 'all_variables')
+
+for (sheet in sheets) {
+  temp_measures = calc_measures(sheet)
+  temp_measures$model = sheet
+  measures = rbind(measures, temp_measures)
+}
 
 
 measures = calc_measures('no_dummies')
@@ -79,7 +88,7 @@ summary(measures)
 calc_best_fit_mean = function(sheet){
   
   # y and y_log
-  y = read_csv("./LSTM/full_dataset.csv")
+  y = read_csv("./LSTM/full_dataset_20250830.csv")
   y = y %>%
     filter(Date >= as.Date("2024-06-13")) %>% 
     rename(y = `eur_close`) %>% 
@@ -100,9 +109,9 @@ calc_best_fit_mean = function(sheet){
   y_log_hat = y_log_hat[-1,]
   
   
-  tic = rmse = mae = numeric(500)
+  tic = rmse = mae = ncol(y_log_hat)
   
-  for (i in 1:500) {
+  for (i in 1:ncol(y_log_hat)) {
     tic[i] = calc_tic(y_log, y_log_hat[,i])
     rmse[i] = sqrt(mean((y_log-y_log_hat[,i])^2))
     mae[i] = mean(abs(y_log-y_log_hat[,i]))
@@ -118,7 +127,7 @@ calc_best_fit_mean = function(sheet){
   return(mean_preds)
 }
 
-y = read_csv("./LSTM/full_dataset.csv")
+y = read_csv("./LSTM/full_dataset_20250830.csv")
 y = y %>%
   filter(Date >= as.Date("2024-06-13")) %>% 
   rename(y = `eur_close`) %>%

@@ -96,8 +96,8 @@ def merge_with_dummies(X, dummies, date):
 
 
 def fit_lstm(model, X_train, y_train, X_val, y_val):
-    lstm = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=200,
-                     callbacks=callbacks.EarlyStopping(patience=20, monitor='val_loss'),
+    lstm = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=250,
+                     callbacks=callbacks.EarlyStopping(patience=25, monitor='val_loss'),
                     verbose = 0)
 
     return lstm
@@ -124,8 +124,10 @@ def sim_lstm(df, y_name, dummy_names, n_sim):
     # model
     model = Sequential([layers.Input((len(X[1]), 1)),
                         layers.LSTM(32),
-                        layers.Dense(16, activation='relu'),
-                        layers.Dense(16, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
                         layers.Dense(1)])
 
     model.compile(loss='mse',
@@ -172,8 +174,10 @@ def sim_lstm_custom_lag(df, y_name, lag, n_sim):
     # model
     model = Sequential([layers.Input((len(X[1]), 1)),
                         layers.LSTM(32),
-                        layers.Dense(16, activation='relu'),
-                        layers.Dense(16, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
                         layers.Dense(1)])
 
     model.compile(loss='mse',
