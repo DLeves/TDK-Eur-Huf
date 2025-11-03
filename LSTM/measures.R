@@ -22,9 +22,7 @@ calc_measures = function(sheet){
     .$y
   
   y_log = diff(log(y))
-  
-  # error = read_excel("./LSTM/errors_results.xlsx", sheet = 'no_dummies')[-1]
-  # error = read_excel("./LSTM/errors_results.xlsx", sheet = 'only_vm')[-1]
+
   error = read_excel("./LSTM/errors_results.xlsx", sheet = sheet, .name_repair = "minimal")[-1]
   y_hat = sapply(error, function(x) y-x)
   y_hat = as.data.frame(y_hat)  
@@ -34,7 +32,7 @@ calc_measures = function(sheet){
   
   
   y_log = y_log[-length(y_log)]
-  y_log_hat = y_log_hat[-1,]
+  # y_log_hat = y_log_hat[-1,]
   
   
   
@@ -61,24 +59,34 @@ for (sheet in sheets) {
   measures = rbind(measures, temp_measures)
 }
 
-
-measures = calc_measures('no_dummies')
-summary(measures)
-
-measures = calc_measures('only_kinfo')
-summary(measures)
-
-measures = calc_measures('only_vm')
-summary(measures)
-
-measures = calc_measures('only_nm')
-summary(measures)
-
-measures = calc_measures('only_mgy')
-summary(measures)
-
-measures = calc_measures('all_variables')
-summary(measures)
+measure_pivot = measures %>%
+  group_by(model) %>%
+  summarise(
+    # mean_mae = round(mean(mae),6),
+    # median_mae = round(median(mae),6),
+    mean_rmse = round(mean(rmse),6),
+    median_rmse = round(median(rmse),6)#,
+    # mean_tic = round(mean(tic),6),
+    # median_tic = round(median(tic),6)
+      )
+ 
+# measures = calc_measures('no_dummies')
+# summary(measures)
+# 
+# measures = calc_measures('only_kinfo')
+# summary(measures)
+# 
+# measures = calc_measures('only_vm')
+# summary(measures)
+# 
+# measures = calc_measures('only_nm')
+# summary(measures)
+# 
+# measures = calc_measures('only_mgy')
+# summary(measures)
+# 
+# measures = calc_measures('all_variables')
+# summary(measures)
 
 
 
@@ -106,7 +114,7 @@ calc_best_fit_mean = function(sheet){
   
   
   y_log = y_log[-length(y_log)]
-  y_log_hat = y_log_hat[-1,]
+  # y_log_hat = y_log_hat[-1,]
   
   
   tic = rmse = mae = ncol(y_log_hat)
