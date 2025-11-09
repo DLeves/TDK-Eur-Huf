@@ -113,7 +113,7 @@ summary(measures)
 write.xlsx(measures, "LSTM_fit_measures.xlsx")
 
 # ts plot with dots---------------------------------------------------------------------------------
-df_full = read_csv("./LSTM/full_dataset.csv")
+df_full = read_csv("./LSTM/full_dataset_20250830.csv")
 
 df = df_full %>%
   rename(y = eur_close) %>% 
@@ -126,13 +126,14 @@ df = df_full %>%
 
 alpha = .7
 color = "red"
+size = 3
 
 ggplot(df, aes(x = Date))+
-  geom_line(aes(y = y), color = "blue", size = 1.2)+
-  geom_point(aes(y = kinfo), color = color, alpha = alpha)+
-  geom_point(aes(y = vm), color = color, alpha = alpha)+
-  geom_point(aes(y = nm), color = color, alpha = alpha)+
-  geom_point(aes(y = mgy), color = color, alpha = alpha)+
+  geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
+  geom_point(aes(y = kinfo), color = color, alpha = alpha, size = size)+
+  geom_point(aes(y = vm), color = color, alpha = alpha, size = size)+
+  geom_point(aes(y = nm), color = color, alpha = alpha, size = size)+
+  geom_point(aes(y = mgy), color = color, alpha = alpha, size = size)+
   labs(y = "EUR-HUF árfolyam"#,
        # title = "Az Euró-Forint árfolyamának alakulása",
        # subtitle = "2018.5.31. és 2025.2.14. között, a vizsgált cikkekkel és alapkamat módosításokkal",
