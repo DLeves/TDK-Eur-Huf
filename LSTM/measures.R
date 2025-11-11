@@ -22,7 +22,9 @@ calc_measures = function(sheet){
     .$y
   
   y_log = diff(log(y))
-
+  
+  # error = read_excel("./LSTM/errors_results.xlsx", sheet = 'no_dummies')[-1]
+  # error = read_excel("./LSTM/errors_results.xlsx", sheet = 'only_vm')[-1]
   error = read_excel("./LSTM/errors_results.xlsx", sheet = sheet, .name_repair = "minimal")[-1]
   y_hat = sapply(error, function(x) y-x)
   y_hat = as.data.frame(y_hat)  
@@ -32,7 +34,7 @@ calc_measures = function(sheet){
   
   
   y_log = y_log[-length(y_log)]
-  # y_log_hat = y_log_hat[-1,]
+  y_log_hat = y_log_hat[-1,]
   
   
   
@@ -113,7 +115,7 @@ calc_best_fit_mean = function(sheet){
   
   
   y_log = y_log[-length(y_log)]
-  # y_log_hat = y_log_hat[-1,]
+  y_log_hat = y_log_hat[-1,]
   
   
   tic = rmse = mae = ncol(y_log_hat)
