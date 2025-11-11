@@ -124,7 +124,7 @@ df = df_full %>%
          ) %>%
   select(Date, y, kinfo, vm, nm, mgy)
 
-alpha = .7
+alpha = .9
 color = "red"
 size = 3
 
@@ -146,3 +146,28 @@ ggplot(df, aes(x = Date))+
         text = element_text(size = 20))
 
 ggsave("./plots/eurhuf_line.jpg")
+
+
+df_long = df_full %>%
+  rename(y = eur_close) %>% 
+  mutate(kinfo = ifelse(mean_kinfo != 0, y, NA),
+         vm = ifelse(mean_varga != 0, y, NA),
+         nm = ifelse(mean_nagy != 0, y, NA),
+         mgy = ifelse(mean_matolcsy != 0, y, NA)
+  ) %>%
+  select(Date, y, kinfo, vm, nm, mgy) %>% 
+  pivot_longer(cols = c(kinfo, vm, nm, mgy), names_to = "variable") %>% 
+  mutate()
+
+ggplot(df_long, aes(x = Date))+
+  geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
+  geom_point(aes(y = value, color = variable), alpha = 1, size = size)+
+  labs(y = "EUR-HUF árfolyam",
+       color = "Változó")+
+  scale_x_date(breaks = "year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(300, 450, by = 25))+
+  theme_bw()+
+  theme(axis.title.x = element_blank(),
+        text = element_text(size = 20))
+
+ggsave("./plots/eurhuf_line_col_dots.jpg")
