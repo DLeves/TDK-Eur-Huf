@@ -62,13 +62,12 @@ for (sheet in sheets) {
 measure_pivot = measures %>%
   group_by(model) %>%
   summarise(
-    # mean_mae = round(mean(mae),6),
-    # median_mae = round(median(mae),6),
+    mean_mae = round(mean(mae),6),
+    median_mae = round(median(mae),6),
     mean_rmse = round(mean(rmse),6),
-    median_rmse = round(median(rmse),6)#,
-    # mean_tic = round(mean(tic),6),
-    # median_tic = round(median(tic),6)
-      )
+    median_rmse = round(median(rmse),6),
+    mean_tic = round(mean(tic),6),
+    median_tic = round(median(tic),6))
  
 # measures = calc_measures('no_dummies')
 # summary(measures)
