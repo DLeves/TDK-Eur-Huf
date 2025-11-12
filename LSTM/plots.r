@@ -113,7 +113,7 @@ summary(measures)
 write.xlsx(measures, "LSTM_fit_measures.xlsx")
 
 # ts plot with dots---------------------------------------------------------------------------------
-df_full = read_csv("./LSTM/full_dataset_20250830.csv")
+df_full = read_csv("./full_dataset_20250830.csv")
 
 df = df_full %>%
   rename(y = eur_close) %>% 
@@ -142,10 +142,26 @@ ggplot(df, aes(x = Date))+
   scale_x_date(breaks = "year", date_labels = "%Y")+
   scale_y_continuous(breaks = seq(300, 450, by = 25))+
   theme_bw()+
-  theme(axis.title.x = element_blank(),
-        text = element_text(size = 20))
+  theme(
+    plot.title   = element_text(family = "Times New Roman", size = 34, face = "bold", hjust = 0.5, margin = margin(b = 10)),
+    plot.subtitle = element_text(family = "Times New Roman", size = 20, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(family = "Times New Roman", size = 30, margin = margin(r = 10)),
+    axis.text.x  = element_text(family = "Times New Roman", size = 22, angle = 90, vjust = 0.5, hjust = 1),
+    axis.text.y  = element_text(family = "Times New Roman", size = 24),
+    legend.title = element_text(family = "Times New Roman", size = 26, face = "bold"),
+    legend.text  = element_text(family = "Times New Roman", size = 24),
+    legend.position = "right",                        
+    legend.justification = "center",
+    plot.caption = element_text(family = "Times New Roman", size = 22, hjust = 0, margin = margin(t = 15)),
+    panel.background = element_rect(fill = "white", color = "white"),
+    plot.background  = element_rect(fill = "white", color = "white"),
+    panel.grid.major = element_line(color = "grey85"),
+    panel.grid.minor = element_blank()
+  )
 
-ggsave("./plots/eurhuf_line.jpg")
+
+ggsave("./plots/eurhuf_line.svg", width = 16, height = 9)
 
 
 df_long = df_full %>%
@@ -157,17 +173,47 @@ df_long = df_full %>%
   ) %>%
   select(Date, y, kinfo, vm, nm, mgy) %>% 
   pivot_longer(cols = c(kinfo, vm, nm, mgy), names_to = "variable") %>% 
-  mutate()
+  mutate(variable = toupper(variable))
 
 ggplot(df_long, aes(x = Date))+
   geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
-  geom_point(aes(y = value, color = variable), alpha = 1, size = size)+
+  geom_point(aes(y = value, color = variable), alpha = .8, size = 2)+
   labs(y = "EUR-HUF árfolyam",
        color = "Változó")+
   scale_x_date(breaks = "year", date_labels = "%Y")+
   scale_y_continuous(breaks = seq(300, 450, by = 25))+
   theme_bw()+
-  theme(axis.title.x = element_blank(),
-        text = element_text(size = 20))
+  theme(
+    text = element_text(family = "Times New Roman")
+  )
+ggsave("./plots/eurhuf_line_col_dots.svg")
 
-ggsave("./plots/eurhuf_line_col_dots.jpg")
+df_long_wo_na = df_long %>%
+  mutate(date_for_vline = ifelse(is.na(value), as.Date(NA), Date))
+
+ggplot(df_long_wo_na, aes(x = Date))+
+  geom_vline(aes(xintercept = date_for_vline, color = variable), alpha = .8, size = .8, linetype = "dashed")+
+  geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
+  labs(y = "EUR-HUF árfolyam",
+       color = "Változó")+
+  scale_x_date(breaks = "year", date_labels = "%Y")+
+  scale_y_continuous(breaks = seq(300, 450, by = 25))+
+  theme_bw()+
+  theme(
+    plot.title   = element_text(family = "Times New Roman", size = 34, face = "bold", hjust = 0.5, margin = margin(b = 10)),
+    plot.subtitle = element_text(family = "Times New Roman", size = 20, face = "bold"),
+    axis.title.x = element_blank(),
+    axis.title.y = element_text(family = "Times New Roman", size = 30, margin = margin(r = 10)),
+    axis.text.x  = element_text(family = "Times New Roman", size = 22, angle = 90, vjust = 0.5, hjust = 1),
+    axis.text.y  = element_text(family = "Times New Roman", size = 24),
+    legend.title = element_text(family = "Times New Roman", size = 26, face = "bold"),
+    legend.text  = element_text(family = "Times New Roman", size = 24),
+    legend.position = "right",                        
+    legend.justification = "center",
+    plot.caption = element_text(family = "Times New Roman", size = 22, hjust = 0, margin = margin(t = 15)),
+    panel.background = element_rect(fill = "white", color = "white"),
+    plot.background  = element_rect(fill = "white", color = "white"),
+    panel.grid.major = element_line(color = "grey85"),
+    panel.grid.minor = element_blank()
+  )
+ggsave("./plots/eurhuf_line_col_dashed_line.svg", width = 16, height = 9)

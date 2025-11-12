@@ -1,189 +1,122 @@
 library(tidyverse)
 library(readxl)
-library(openxlsx)
+library(extrafont)
 
-# RMSE Boxplots
-rmse=read_excel("./LSTM/rmse_results.xlsx")
-rmse = rmse[,-1]
+font_import(pattern = "times", prompt = FALSE)
+loadfonts(device = "win")
 
-rmse_long = rmse %>%
-  pivot_longer(cols = rmse_all_variables:rmse_only_mgy, names_to = "name", values_to = "val") %>% 
-  mutate(name = substring(name, 6))
+# Plot Optimal Lag Mean
+lags = read_excel("optimal_lag_mean.xlsx") %>% 
+  mutate(lags = 1:8)
 
+ggplot(lags, aes(x = lags, y = rmse)) +
+  geom_bar(stat = "identity", fill = "steelblue") +
+  labs(
+    # title = "Optimális késleltetés kiválasztása az RMSE alapján az LSTM modellekhez",
+       x = "Eredményváltozó legmagasabb időbeli késleltetése",
+       y = "Átlagos RMSE (Forintban)") +
+  scale_x_continuous(breaks = 1:8) +
+  theme_minimal()+
+  theme(
+    plot.title   = element_text(family = "Times New Roman", size = 34, face = "bold", hjust = 0.5, margin = margin(b = 10)),
+    plot.subtitle = element_text(family = "Times New Roman", size = 20, face = "bold"),
+    axis.title.x = element_text(family = "Times New Roman", size = 30, margin = margin(t = 10)),
+    axis.title.y = element_text(family = "Times New Roman", size = 30, margin = margin(r = 10)),
+    axis.text.x  = element_text(family = "Times New Roman", size = 22, vjust = 0.5, hjust = 1),
+    axis.text.y  = element_text(family = "Times New Roman", size = 24),
+    legend.title = element_text(family = "Times New Roman", size = 26, face = "bold"),
+    legend.text  = element_text(family = "Times New Roman", size = 24),
+    legend.position = "right",                        
+    legend.justification = "center",
+    plot.caption = element_text(family = "Times New Roman", size = 22, hjust = 0, margin = margin(t = 15)),
+    panel.background = element_rect(fill = "white", color = "white"),
+    plot.background  = element_rect(fill = "white", color = "white"),
+    panel.grid.major = element_line(color = "grey85"),
+    panel.grid.minor = element_blank()
+  )
 
-ggplot(rmse_long, aes(x = name, y = val))+
-  geom_boxplot()+
-  scale_y_continuous(limits = c(0, 10))+
-  theme_bw()
+ggsave("plots/optimal_lag_mean.svg", width = 16, height = 9)
 
-# rmse_long_filt = rmse[-1,] %>%
-#   pivot_longer(cols = rmse_all_variables:rmse_only_mgy, names_to = "name", values_to = "val") %>% 
-#   mutate(name = substring(name, 6))
-# 
-# 
-# ggplot(rmse_long_filt, aes(x = name, y = val))+
-#   geom_boxplot()+
-#   labs(y = 'RMSE',
-#        title = "LSTM modellek RMSE értékeinek dobozábrái", caption = "Saját számítás és szerkesztés.")+
-#   scale_x_discrete(labels = c("Teljes modell","Alapmodell","Kormányinfó","Matolcsy György","Nagy Márton","Varga Mihály"))+
-#   theme_bw()+
-#   theme(axis.title.x = element_blank())
+# Plot c.p. results
+cp_results = read_csv("ceteris_paribus_results.csv")
 
-ggsave("./plots/rmse_box_filt.jpg")
+y_test = read_csv("full_dataset_20250830.csv") %>% 
+  tail(175) %>% 
+  .$eur_close
 
-
-# optimal lags
-opt_lag = read_excel("./LSTM/optimal_lag_mean.xlsx")
-opt_lag$lag = 1:8
-
-ggplot(opt_lag, aes(x = lag, y = rmse))+
-  geom_line(size = .7)+
-  labs(y = 'Átlagos RMSE', x = "Eredményváltozó időbeli késleltetése"#,
-       # title = "Az egyes eredményváltozó késleltetéshez tartozó átlagos RMSE-k",
-       # subtitle = "50 darabos LSTM modell mintánkon",
-       # caption = "Saját számítás és szerkesztés."
-  )+
-  theme_bw()+
-  theme(text =  element_text(size = 20))
-
-ggsave("./plots/optimal_lags.jpg")
-
-
-#mae
-error = read_excel("./LSTM/errors_results.xlsx", sheet = 'only_vm')[-1]
-maes = sapply(error, function(x) mean(abs(x)))
-
-# TIC-----------------------------------------------------------------------------------------------
-
-# y and y_log
-y = read_csv("./LSTM/full_dataset.csv")
-y = y %>%
-  filter(Date >= as.Date("2024-06-13")) %>% 
-  rename(y = `eur_close`) %>% 
-  .$y
-
-y_log = diff(log(y))
-
-# y_hat and y_log_hat
-# error = read_excel("./LSTM/errors_results.xlsx", sheet = 'no_dummies')[-1]
-error = read_excel("./LSTM/errors_results.xlsx", sheet = 'only_vm')[-1]
-y_hat = sapply(error, function(x) y-x)
-y_hat = as.data.frame(y_hat)  
-
-y_log_hat = apply(y_hat, 2, function(x) diff(log(x)))
-y_log_hat = as.data.frame(y_log_hat)
-
-
-y_log = y_log[-length(y_log)]
-y_log_hat = y_log_hat[-1,]
-
-plot_df = data.frame(y = y_log, y_hat = y_log_hat$sim_15, t = 1:length(y_log))
-
-
-
-ggplot(plot_df, aes(x = t))+
-  geom_line(aes(y = y), color = "blue", size = 1)+
-  geom_line(aes(y = y_hat), color = "red", size = 1, alpha = .8)+
-  labs(title = "A 15. LSTM modell becslése a loghozamra és az aktuális adatok")+
-  theme_bw()
-
-
-# TIC = sqrt(sum (y-y_hat)^2) / (sqrt(sum y_hat^2) + sqrt(sum y^2))
-calc_tic = function(y, y_hat){
-  a = sqrt(sum((y-y_hat)^2))
-  b = sqrt(sum(y_hat^2)) 
-  c = sqrt(sum(y^2))
-  return(a/(b+c))
-}
-
-
-tic = c()
-rmse = c()
-mae = c()
-
-for (i in 1:500) {
-  tic[i] = calc_tic(y_log, y_log_hat[,i])
-  rmse[i] = sqrt(mean((y_log-y_log_hat[,i])^2))
-  mae[i] = mean(abs(y_log-y_log_hat[,i]))
-}
-
-measures = data.frame(mae = mae, rmse = rmse, tic= tic)
-summary(measures)
-
-write.xlsx(measures, "LSTM_fit_measures.xlsx")
-
-# ts plot with dots---------------------------------------------------------------------------------
-df_full = read_csv("./full_dataset_20250830.csv")
-
-df = df_full %>%
-  rename(y = eur_close) %>% 
-  mutate(kinfo = ifelse(mean_kinfo != 0, y, NA),
-         vm = ifelse(mean_varga != 0, y, NA),
-         nm = ifelse(mean_nagy != 0, y, NA),
-         mgy = ifelse(mean_matolcsy != 0, y, NA)
+a = cp_results %>%
+  group_by(variable, pct_change) %>%
+  arrange(sample_idx, .by_group = TRUE) %>%
+  summarise(
+    diff = {
+      idxs <- as.integer(sample_idx)
+      if (any(idxs == 0)) idxs <- idxs + 1L
+      actuals <- y_test[idxs]
+      mean(prediction / actuals - 1)
+    },
+    .groups = "drop_last"
   ) %>%
-  select(Date, y, kinfo, vm, nm, mgy)
+  ungroup()
 
-alpha = .9
-color = "red"
-size = 3
+var_map = data.frame(
+  mapped = c("Y[-2]", "Y[-1]", "FED", "MNB", "ECB", "BUX", "CETOP",
+               "MGY", "VM", "NM", "KI", "EUR/CZK", "EUR/PLN", "EUR/RON"),
+  original = c("Y_-2", "Y_-1", "FED", "MNB", "ECB", "BUX", "cetop",
+             "mean_matolcsy", "mean_varga", "mean_nagy", "mean_kinfo",
+             "eurczk", "eurpln", "eurron"),
+  group = c("Régiós FX piac és Y időbeli késleltetettjei",
+            "Régiós FX piac és Y időbeli késleltetettjei",
+            "Alapkamatok", "Alapkamatok", "Alapkamatok",
+            "Régiós tőkepiacok", "Régiós tőkepiacok",
+            "Gazdasági döntéshozók", "Gazdasági döntéshozók",
+            "Gazdasági döntéshozók", "Gazdasági döntéshozók", 
+            "Régiós FX piac és Y időbeli késleltetettjei",
+            "Régiós FX piac és Y időbeli késleltetettjei",
+            "Régiós FX piac és Y időbeli késleltetettjei"),
+  stringsAsFactors = FALSE
+)
 
-ggplot(df, aes(x = Date))+
-  geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
-  geom_point(aes(y = kinfo), color = color, alpha = alpha, size = size)+
-  geom_point(aes(y = vm), color = color, alpha = alpha, size = size)+
-  geom_point(aes(y = nm), color = color, alpha = alpha, size = size)+
-  geom_point(aes(y = mgy), color = color, alpha = alpha, size = size)+
-  labs(y = "EUR-HUF árfolyam"#,
-       # title = "Az Euró-Forint árfolyamának alakulása",
-       # subtitle = "2018.5.31. és 2025.2.14. között, a vizsgált cikkekkel és alapkamat módosításokkal",
-       # caption = "Forrás: Yahoo Finance, Magyar Hang, MNB. Saját szerkesztés."
-  )+
-  scale_x_date(breaks = "year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(300, 450, by = 25))+
-  theme_bw()+
-  theme(axis.title.x = element_blank(),
-        text = element_text(size = 20))
+variable_colors <- c(
+  "Y[-1]"     = "#00BA38",
+  "Y[-2]"     = "#F8766D",
+  "EUR/RON"   = "#619CFF",
+  "EUR/CZK"   = "#F564E3",
+  "EUR/PLN"   = "#00BFC4",
+  "MNB"       = "#00BA38",
+  "FED"       = "#F8766D",
+  "ECB"       = "#619CFF",
+  "BUX"       = "#F8766D",
+  "CETOP"     = "#00BA38",
+  "MGY"       = "#F8766D",
+  "VM"        = "#00BA38",
+  "NM"        = "#619CFF",
+  "KI"        = "#F564E3"
+)
 
-ggsave("./plots/eurhuf_line.jpg")
+a = a %>% 
+  left_join(var_map, by = c("variable" = "original"))
 
 
-df_long = df_full %>%
-  rename(y = eur_close) %>% 
-  mutate(kinfo = ifelse(mean_kinfo != 0, y, NA),
-         vm = ifelse(mean_varga != 0, y, NA),
-         nm = ifelse(mean_nagy != 0, y, NA),
-         mgy = ifelse(mean_matolcsy != 0, y, NA)
-  ) %>%
-  select(Date, y, kinfo, vm, nm, mgy) %>% 
-  pivot_longer(cols = c(kinfo, vm, nm, mgy), names_to = "variable") %>% 
-  mutate(variable = toupper(variable))
+ggplot(a, aes(x = pct_change, y = diff, color = mapped)) +
+  geom_line(linewidth = 1) +
+  labs(
+    # title = "Ceteris Paribus elemzés az LSTM modellekhez",
+       x = "Változó c.p. változása (%)",
+       y = "Eredményváltozóra mért hatás (%)",
+       color = "Változó") +
+  scale_y_continuous(labels = scales::percent_format(accuracy = 1e-2)) +
+  scale_x_continuous(labels = scales::percent_format(accuracy = 1)) +
+  # scale_color_viridis_d(option = "turbo") +
+  scale_color_manual(values = variable_colors, breaks = names(variable_colors)) +
+  facet_wrap(~ factor(group, levels = c("Régiós FX piac és Y időbeli késleltetettjei",
+                                        "Régiós tőkepiacok",
+                                        "Alapkamatok",
+                                        "Gazdasági döntéshozók"
+                                        )), ncol = 2, scales = "free") +
+  theme_minimal()+
+  theme(
+    text = element_text(family = "Times New Roman")
+  )
 
-ggplot(df_long, aes(x = Date))+
-  geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
-  geom_point(aes(y = value, color = variable), alpha = 1, size = size)+
-  labs(y = "EUR-HUF árfolyam",
-       color = "Változó")+
-  scale_x_date(breaks = "year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(300, 450, by = 25))+
-  theme_bw()+
-  theme(axis.title.x = element_blank(),
-        text = element_text(size = 20))
+ggsave("plots/ceteris_paribus_lstm_grid.svg")
 
-ggsave("./plots/eurhuf_line_col_dots.jpg")
-
-df_long_not_na = df_long %>%
-  mutate(variable_date = ifelse(!is.na(value), Date, as.Date(NA)))
-
-ggplot(df_long_not_na, aes(x = Date))+
-  geom_vline(aes(xintercept = variable_date, color = variable), alpha = 1, size = 1, linetype = "dashed")+
-  geom_line(aes(y = y), color = "blue", linewidth = 1.2)+
-  labs(y = "EUR-HUF árfolyam",
-       color = "Változó")+
-  scale_x_date(breaks = "year", date_labels = "%Y")+
-  scale_y_continuous(breaks = seq(300, 450, by = 25))+
-  theme_bw()+
-  theme(axis.title.x = element_blank(),
-        text = element_text(size = 20))
-
-ggsave("./plots/eurhuf_line_col_vline.jpg")
