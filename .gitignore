@@ -5,3 +5,8 @@
 TDK-Eur-Huf.Rproj
 webscrape/deepl_api_key.txt
 webscrape/deepl_api_key_2.txt
+**/.ipynb_checkpoints/
+**/__pycache__
+*/.Rproj
+Sentiment analysis/app.log
+Sentiment analysis/fin_model

@@ -96,15 +96,16 @@ def merge_with_dummies(X, dummies, date):
 
 
 def fit_lstm(model, X_train, y_train, X_val, y_val):
-    lstm = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=100,
-                     callbacks=callbacks.EarlyStopping(patience=10, monitor='val_loss'))
+    lstm = model.fit(X_train, y_train, validation_data=(X_val, y_val), epochs=250,
+                     callbacks=callbacks.EarlyStopping(patience=25, monitor='val_loss'),
+                    verbose = 0)
 
     return lstm
 
 
 def sim_lstm(df, y_name, dummy_names, n_sim):
     # splitting up the data
-    windowed_df = df_to_windowed_df(df[y_name], '2018-06-10', '2024-09-14', 6)
+    windowed_df = df_to_windowed_df(df[y_name], '2018-06-04', '2025-02-14', 2)
     dates, X, y = windowed_df_to_date_X_y(windowed_df)
 
     # merging the data with the dummies
@@ -123,8 +124,10 @@ def sim_lstm(df, y_name, dummy_names, n_sim):
     # model
     model = Sequential([layers.Input((len(X[1]), 1)),
                         layers.LSTM(32),
-                        layers.Dense(16, activation='relu'),
-                        layers.Dense(16, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
                         layers.Dense(1)])
 
     model.compile(loss='mse',
@@ -154,14 +157,10 @@ def sim_lstm(df, y_name, dummy_names, n_sim):
     return sim_rmse, errors
 
 
-def sim_lstm_custom_lag(df, y_name, dummy_names, lag, n_sim):
+def sim_lstm_custom_lag(df, y_name, lag, n_sim):
     # splitting up the data
-    windowed_df = df_to_windowed_df(df[y_name], df['row.names.eurhuf.'][lag], '2024-09-14', lag)
+    windowed_df = df_to_windowed_df(df[y_name], df['Date'][lag], '2025-02-03', lag)
     dates, X, y = windowed_df_to_date_X_y(windowed_df)
-
-    # merging the data with the dummies
-    if 0 < len(dummy_names):
-        X = merge_with_dummies(X, df[dummy_names], dates)
 
     # train, validation, test split
     q_80 = int(len(dates) * .8)
@@ -175,8 +174,10 @@ def sim_lstm_custom_lag(df, y_name, dummy_names, lag, n_sim):
     # model
     model = Sequential([layers.Input((len(X[1]), 1)),
                         layers.LSTM(32),
-                        layers.Dense(16, activation='relu'),
-                        layers.Dense(16, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
+                        layers.Dense(8, activation='relu'),
                         layers.Dense(1)])
 
     model.compile(loss='mse',
